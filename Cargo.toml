@@ -1,0 +1,6 @@
+[package]
+name = "static-side-deployer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
