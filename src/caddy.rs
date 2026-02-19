@@ -4,7 +4,7 @@ pub async fn upsert_config(caddy_dir: &Path, full_domain: &str) -> Result<bool, 
     let config_dir = caddy_dir.join("config/static");
     tokio::fs::create_dir_all(&config_dir).await?;
 
-    let config_path = config_dir.join(full_domain);
+    let config_path = config_dir.join(format!("{full_domain}.Caddyfile"));
     let new_content = generate_config(caddy_dir, full_domain);
 
     let changed = match tokio::fs::read_to_string(&config_path).await {

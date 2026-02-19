@@ -60,7 +60,7 @@ WantedBy=multi-user.target
 Add this to your main Caddyfile (e.g. `/etc/caddy/Caddyfile`) to import deployed site configs:
 
 ```
-import /etc/caddy/config/static/*
+import /etc/caddy/config/static/*.Caddyfile
 ```
 
 ### 4. SELinux (Fedora/RHEL)
