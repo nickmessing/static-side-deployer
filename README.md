@@ -73,13 +73,7 @@ semanage fcontext -a -t httpd_sys_content_t "/etc/caddy/static(/.*)?"
 restorecon -Rv /etc/caddy/config /etc/caddy/static
 ```
 
-Allow the deployer to connect to D-Bus (for triggering Caddy reload):
-
-```bash
-setsebool -P daemons_dbus_chat 1
-```
-
-The app automatically runs `restorecon -R` after writing files, so new deployments pick up the correct contexts.
+The app automatically runs `restorecon -R` after writing files, so new deployments pick up the correct contexts. D-Bus access to systemd is permitted by default for services running as `unconfined_service_t`. If SELinux blocks D-Bus calls, check `ausearch -m avc -ts recent` and generate a policy with `audit2allow`.
 
 ### 5. Enable and start
 
