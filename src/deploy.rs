@@ -32,6 +32,18 @@ pub async fn deploy_files(
         let _ = tokio::fs::remove_dir_all(&old).await;
     }
 
+    // Restore SELinux contexts so Caddy can read the files
+    match tokio::process::Command::new("restorecon")
+        .arg("-R")
+        .arg(&target)
+        .status()
+        .await
+    {
+        Ok(status) if status.success() => {}
+        Ok(status) => tracing::warn!("restorecon exited with {status} for {}", target.display()),
+        Err(e) => tracing::warn!("restorecon failed for {}: {e}", target.display()),
+    }
+
     tracing::info!(
         "deployed {} files to {}",
         files.len(),

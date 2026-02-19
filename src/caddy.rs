@@ -14,6 +14,7 @@ pub async fn upsert_config(caddy_dir: &Path, full_domain: &str) -> Result<bool, 
 
     if changed {
         tokio::fs::write(&config_path, &new_content).await?;
+        restorecon(&config_path).await;
         tracing::info!("wrote caddy config: {}", config_path.display());
     }
 
@@ -29,6 +30,19 @@ fn generate_config(caddy_dir: &Path, full_domain: &str) -> String {
         \x20   file_server\n\
         }}\n"
     )
+}
+
+async fn restorecon(path: &Path) {
+    match tokio::process::Command::new("restorecon")
+        .arg("-R")
+        .arg(path)
+        .status()
+        .await
+    {
+        Ok(status) if status.success() => {}
+        Ok(status) => tracing::warn!("restorecon exited with {status} for {}", path.display()),
+        Err(e) => tracing::warn!("restorecon failed for {}: {e}", path.display()),
+    }
 }
 
 pub async fn reload_caddy() -> Result<(), Box<dyn std::error::Error>> {
