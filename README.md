@@ -10,7 +10,7 @@ Receives `.tgz` archives via HTTP POST, extracts them, configures Caddy, and ser
 cargo build --release
 ```
 
-The binary will be at `target/release/static-side-deployer`.
+The release profile is configured with LTO, single codegen unit, symbol stripping, and abort-on-panic for a smaller, faster binary. The output will be at `target/release/static-site-deployer`.
 
 ## Configuration
 
