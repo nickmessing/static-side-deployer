@@ -51,9 +51,9 @@ async fn push_handler(
     tracing::info!("received {} bytes", body.len());
 
     let contents = match archive::extract_archive(&body) {
-        Some(c) => c,
-        None => {
-            tracing::warn!("invalid archive");
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!("invalid archive: {e}");
             return StatusCode::BAD_REQUEST;
         }
     };

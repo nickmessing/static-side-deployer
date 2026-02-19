@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 
@@ -9,53 +9,65 @@ pub struct ArchiveContents {
     pub files: HashMap<PathBuf, Vec<u8>>,
 }
 
-pub fn extract_archive(data: &[u8]) -> Option<ArchiveContents> {
+fn normalize_path(path: &Path) -> PathBuf {
+    path.strip_prefix("./").unwrap_or(path).to_path_buf()
+}
+
+pub fn extract_archive(data: &[u8]) -> Result<ArchiveContents, String> {
     let decoder = flate2::read::GzDecoder::new(Cursor::new(data));
     let mut archive = tar::Archive::new(decoder);
-    let entries = archive.entries().ok()?;
+    let entries = archive.entries().map_err(|e| format!("failed to read tar entries: {e}"))?;
 
-    let mut raw_files = HashMap::new();
-    let mut root_items = HashSet::new();
+    let mut manifest_data: Option<Vec<u8>> = None;
+    let mut dist_files: HashMap<PathBuf, Vec<u8>> = HashMap::new();
 
-    for entry in entries {
-        let mut entry = entry.ok()?;
-        let path = entry.path().ok()?.to_path_buf();
+    for (i, entry) in entries.enumerate() {
+        let mut entry = entry.map_err(|e| format!("failed to read entry {i}: {e}"))?;
+        let path = normalize_path(&entry.path().map_err(|e| format!("bad path in entry {i}: {e}"))?.to_path_buf());
 
-        let top = path
-            .components()
-            .next()?
-            .as_os_str()
-            .to_string_lossy()
-            .to_string();
-        root_items.insert(top);
+        let is_file = entry.header().entry_type().is_file();
 
-        if entry.header().entry_type().is_file() {
+        if path == Path::new("manifest.json") && is_file {
             let mut buf = Vec::new();
-            entry.read_to_end(&mut buf).ok()?;
-            raw_files.insert(path, buf);
+            entry
+                .read_to_end(&mut buf)
+                .map_err(|e| format!("failed to read manifest.json: {e}"))?;
+            manifest_data = Some(buf);
+        } else if is_file {
+            if let Ok(stripped) = path.strip_prefix("dist") {
+                let mut buf = Vec::new();
+                entry
+                    .read_to_end(&mut buf)
+                    .map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+                dist_files.insert(stripped.to_path_buf(), buf);
+            } else {
+                tracing::warn!("unexpected file outside dist/: {}", path.display());
+            }
         }
     }
 
-    if root_items.len() != 2 || !root_items.contains("manifest.json") || !root_items.contains("dist")
-    {
-        return None;
+    let manifest_data = manifest_data.ok_or("manifest.json not found in archive")?;
+
+    if dist_files.is_empty() {
+        return Err("no files found in dist/ directory".into());
     }
 
-    let manifest_data = raw_files.remove(Path::new("manifest.json"))?;
-    let manifest: Manifest = serde_json::from_slice(&manifest_data).ok()?;
+    let manifest: Manifest =
+        serde_json::from_slice(&manifest_data).map_err(|e| format!("invalid manifest.json: {e}"))?;
 
     if manifest.domain.is_empty() {
-        return None;
+        return Err("manifest domain is empty".into());
     }
 
-    let dist_prefix = Path::new("dist");
-    let files = raw_files
-        .into_iter()
-        .filter_map(|(path, data)| {
-            let stripped = path.strip_prefix(dist_prefix).ok()?;
-            Some((stripped.to_path_buf(), data))
-        })
-        .collect();
+    tracing::info!(
+        "extracted manifest (domain={}, scope={:?}) and {} dist files",
+        manifest.domain,
+        manifest.scope,
+        dist_files.len()
+    );
 
-    Some(ArchiveContents { manifest, files })
+    Ok(ArchiveContents {
+        manifest,
+        files: dist_files,
+    })
 }
