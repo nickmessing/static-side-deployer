@@ -5,4 +5,12 @@ edition = "2024"
 
 [dependencies]
 axum = "0.8.8"
-tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros"] }
+flate2 = "1.1.9"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1"
+tar = "0.4.44"
+tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros", "net", "fs"] }
+tracing = "0.1.44"
+tracing-subscriber = "0.3.22"
+zbus = "5"
+zbus_systemd = { version = "0.25900", features = ["systemd1"] }
