@@ -8,9 +8,12 @@ pub enum Scope {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Manifest {
     pub scope: Scope,
     pub domain: String,
+    #[serde(default)]
+    pub skip_caddy_config: bool,
 }
 
 impl Manifest {

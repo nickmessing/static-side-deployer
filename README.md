@@ -106,6 +106,7 @@ dist/
 |---|---|---|
 | `scope` | `"public"` or `"private"` | Public sites get `*.nickmessing.com`, private get `*.internal` |
 | `domain` | string | Subdomain prefix |
+| `skipCaddyConfig` | `true` or `false` (default) | Skip Caddyfile generation and reload, for sites with custom configs |
 
 A manifest with `scope: "public"` and `domain: "mysite"` deploys to `mysite.nickmessing.com`.
 

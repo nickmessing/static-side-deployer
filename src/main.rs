@@ -65,18 +65,22 @@ async fn push_handler(
         contents.files.len()
     );
 
-    let caddy_changed = match caddy::upsert_config(&config.caddy_directory, &full_domain).await {
-        Ok(changed) => changed,
-        Err(e) => {
-            tracing::error!("failed to upsert caddy config: {e}");
-            return StatusCode::INTERNAL_SERVER_ERROR;
-        }
-    };
+    if contents.manifest.skip_caddy_config {
+        tracing::info!("skipping caddy config (skipCaddyConfig=true)");
+    } else {
+        let caddy_changed = match caddy::upsert_config(&config.caddy_directory, &full_domain).await {
+            Ok(changed) => changed,
+            Err(e) => {
+                tracing::error!("failed to upsert caddy config: {e}");
+                return StatusCode::INTERNAL_SERVER_ERROR;
+            }
+        };
 
-    if caddy_changed {
-        if let Err(e) = caddy::reload_caddy().await {
-            tracing::error!("failed to reload caddy: {e}");
-            return StatusCode::INTERNAL_SERVER_ERROR;
+        if caddy_changed {
+            if let Err(e) = caddy::reload_caddy().await {
+                tracing::error!("failed to reload caddy: {e}");
+                return StatusCode::INTERNAL_SERVER_ERROR;
+            }
         }
     }
 
